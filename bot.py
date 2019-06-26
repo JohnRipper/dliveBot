@@ -33,8 +33,10 @@ class Bot:
         self.is_running = True
         self.settings = None
         self.cogs = []
-
-        self.user_id = 0
+        self.username = ''
+        self.role = ''
+        self.message_queue = []
+        self.rate_limit_seconds = 1
 
     def load_config(self, config=None):
         if config is None:
@@ -43,27 +45,15 @@ class Bot:
             self.settings = json.load(data_file)
         self.load_cogs()
 
-
-
     async def connect(self):
-        headers = {'authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImRsaXZlLTI1ODQ4MTc4IiwiZGlzcGxheW5hbWUiOiJKb2hubnlDYXJjaW5vZ2VuIiwiYXZhdGFyIjoiaHR0cHM6Ly9pbWFnZXMucHJkLmRsaXZlY2RuLmNvbS9hdmF0YXIvZGVmYXVsdDEzLnBuZyIsInBhcnRuZXJfc3RhdHVzX3N0cmluZyI6Ik5PTkUiLCJpZCI6IiIsImxpZCI6MCwidHlwZSI6IiIsInJvbGUiOiJOb25lIiwib2F1dGhfYXBwaWQiOiIiLCJleHAiOjE1NjQwNzg0NjMsImlhdCI6MTU2MTQ4NjQ2MywiaXNzIjoiTGlub0FwcCJ9.riE6FYJNmZee8Ggaa6SP7QmdiM8BBkmHRnWHj1xOLpc',
-                   'Origin': 'https://dlive.tv',
-                   'Referer': 'https://dlive.tv/JohnnyCarcinogen'}
         async with websockets.connect(uri='wss://graphigostream.prd.dlive.tv/',
                                       subprotocols=['graphql-ws'],
-                                      extra_headers=headers,
+                                      extra_headers=constants.get_headers(self.settings['auth_key']),
                                       ) as self.ws:
-            data = {"type":"connection_init","payload":{}}
-            # join room
-            data2 = {"id":"1","type":"start","payload":
-                {"variables":{"streamer":self.settings["room"]},
-                 "extensions":{},"operationName":"StreamMessageSubscription",
-                 "query":
-                     "subscription StreamMessageSubscription($streamer: String!) {\n  streamMessageReceived(streamer: $streamer) {\n    type\n    ... on ChatGift {\n      id\n      gift\n      amount\n      message\n      recentCount\n      expireDuration\n      ...VStreamChatSenderInfoFrag\n      __typename\n    }\n    ... on ChatHost {\n      id\n      viewer\n      ...VStreamChatSenderInfoFrag\n      __typename\n    }\n    ... on ChatSubscription {\n      id\n      month\n      ...VStreamChatSenderInfoFrag\n      __typename\n    }\n    ... on ChatChangeMode {\n      mode\n      __typename\n    }\n    ... on ChatText {\n      id\n      content\n      ...VStreamChatSenderInfoFrag\n      __typename\n    }\n    ... on ChatFollow {\n      id\n      ...VStreamChatSenderInfoFrag\n      __typename\n    }\n    ... on ChatDelete {\n      ids\n      __typename\n    }\n    ... on ChatBan {\n      id\n      ...VStreamChatSenderInfoFrag\n      bannedBy {\n        id\n        displayname\n        __typename\n      }\n      bannedByRoomRole\n      __typename\n    }\n    ... on ChatModerator {\n      id\n      ...VStreamChatSenderInfoFrag\n      add\n      __typename\n    }\n    ... on ChatEmoteAdd {\n      id\n      ...VStreamChatSenderInfoFrag\n      emote\n      __typename\n    }\n    ... on ChatTimeout {\n      id\n      ...VStreamChatSenderInfoFrag\n      minute\n      bannedBy {\n        id\n        displayname\n        __typename\n      }\n      bannedByRoomRole\n      __typename\n    }\n    ... on ChatTCValueAdd {\n      id\n      ...VStreamChatSenderInfoFrag\n      amount\n      totalAmount\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment VStreamChatSenderInfoFrag on SenderInfo {\n  subscribing\n  role\n  roomRole\n  sender {\n    id\n    username\n    displayname\n    avatar\n    partnerStatus\n    badges\n    __typename\n  }\n  __typename\n}\n"}}
             self.connected = True
-            await self.ws.send(json.dumps(data))
-            await self.ws.send(json.dumps(data2))
-
+            await self.ws.send(json.dumps(constants.get_init_payload()))
+            print('running')
+            await self.ws.send(json.dumps(constants.get_StreamMessageSubscription(self.settings["room"])))
             async for message in self.ws:
                 await self.consumer(message)
 
@@ -99,14 +89,31 @@ class Bot:
                             for cog in self.cogs:
                                 await getattr(cog, data_type.lower())(object)
 
-    async def send(self, message):
-        r = requests.post
-        return None
+    async def send(self, message: str):
+        self.message_queue.append(message)
+
 
     def disconnect(self):
         self.is_running = False
         self.ws.close()
 
+    def process_message_queue(self):
+        while self.is_running:
+            if len(self.message_queue) > 0:
+                time.sleep(self.rate_limit_seconds)
+                headers = {
+                    'authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImRsaXZlLTI1ODQ4MTc4IiwiZGlzcGxheW5hbWUiOiJKb2hubnlDYXJjaW5vZ2VuIiwiYXZhdGFyIjoiaHR0cHM6Ly9pbWFnZXMucHJkLmRsaXZlY2RuLmNvbS9hdmF0YXIvZGVmYXVsdDEzLnBuZyIsInBhcnRuZXJfc3RhdHVzX3N0cmluZyI6Ik5PTkUiLCJpZCI6IiIsImxpZCI6MCwidHlwZSI6IiIsInJvbGUiOiJOb25lIiwib2F1dGhfYXBwaWQiOiIiLCJleHAiOjE1NjQwOTA5OTgsImlhdCI6MTU2MTQ5ODk5OCwiaXNzIjoiTGlub0FwcCJ9.cgMveRgjYIlxPQGrs4rR5gr8CINt-wXH63VcbZCpmFc',
+                    'content-type': 'application/json', 'Origin': 'https://dlive.tv', 'Referer': 'https://dlive.tv/'}
+                data = {"operationName": "SendStreamChatMessage", "variables": {
+                    "input": {"streamer": "dlive-25848178", "message": self.message_queue.pop(0), "roomRole": "Owner",
+                              "subscribing": True}},
+                        "extensions": {"persistedQuery": {"version": 1,
+                                                          "sha256Hash": "e755f412252005c7d7865084170b9ec13547e9951a1296f7dfe92d377e760b30"}}}
+                r = requests.post(url='https://graphigo.prd.dlive.tv/',
+                                  headers=headers,
+                                  data=json.dumps(data))
+                print(r.content)
+                time.sleep(self.rate_limit_seconds)
 
 def process_arg(arg, b: Bot):
     try:
@@ -133,13 +140,15 @@ def process_arg(arg, b: Bot):
 
 
 async def start(executor, b: Bot):
+    asyncio.get_event_loop().run_in_executor(executor, bot.process_message_queue),
+
     await b.connect()
 
 
 if __name__ == "__main__":
+    bot = Bot()
     try:
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, )
-        bot = Bot()
         process_arg(sys.argv[1:], bot)
         asyncio.get_event_loop().run_until_complete(start(executor, bot))
     except Exception as e:

@@ -20,6 +20,7 @@ class Message:
         self.sender_id = ''
         self.load_raw(self.raw)
 
+
     def load_raw(self, raw: dict):
         self.message_id = self.raw.get('id','')
         self.content = self.raw.get('content','')
