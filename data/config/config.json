@@ -1,0 +1,6 @@
+{
+  "auth_key": "",
+  "room": "dlive-25848178",
+  "global_prefixes": [".", ","],
+  "modules": ["Echo"]
+}
