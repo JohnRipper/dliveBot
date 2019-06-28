@@ -57,17 +57,21 @@ class Bot:
             async for message in self.ws:
                 await self.consumer(message)
 
-
     def add_cog(self, cog_name: str):
-        m = importlib.import_module(f'modules.{cog_name.lower()}')
-        cog_class = getattr(m, cog_name)
-        cog = cog_class(bot=self)
-        self.cogs.append(cog)
+        try:
+            m = importlib.import_module(f'modules.{cog_name.lower()}')
+            cog_class = getattr(m, cog_name)
+            cog = cog_class(bot=self)
+            self.cogs.append(cog)
+            return True
+        except Exception as e:
+            print(e)
 
     def remove_cog(self, cog_name: str):
         for cog in self.cogs:
             if cog.name == cog_name:
                 self.cogs.remove(cog)
+                return True
 
     def load_cogs(self):
         for cog_name in self.settings['modules']:
@@ -77,17 +81,17 @@ class Bot:
         print(message)
         d_crap = json.loads(message)
         self.logger.info(message)
-
+        # TODO map out all socket events.
         if d_crap['type'] == "data":
             for data_type in constants.T_OBJECTS:
                 if data_type in d_crap['payload']['data']:
-                    # why is this even a list?
                     if data_type is constants.STREAMMESSAGERECEIVED:
+                        # why is this even a list? ehh figure it out later
                         for object in d_crap['payload']['data']['streamMessageReceived']:
-                            # message = Message(object)
-                            #do cogs
-                            for cog in self.cogs:
-                                await getattr(cog, data_type.lower())(object)
+                            for type in constants.STREAM_T_OBJECTS:
+                                # this cog code only runs hen a stream message type is detected. wonder wht other types do.
+                                for cog in self.cogs:
+                                    await getattr(cog, type.lower())(object)
 
     async def send(self, message: str):
         self.message_queue.append(message)
@@ -100,19 +104,21 @@ class Bot:
     def process_message_queue(self):
         while self.is_running:
             if len(self.message_queue) > 0:
+                print(self.settings['room'])
                 time.sleep(self.rate_limit_seconds)
                 headers = {
-                    'authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImRsaXZlLTI1ODQ4MTc4IiwiZGlzcGxheW5hbWUiOiJKb2hubnlDYXJjaW5vZ2VuIiwiYXZhdGFyIjoiaHR0cHM6Ly9pbWFnZXMucHJkLmRsaXZlY2RuLmNvbS9hdmF0YXIvZGVmYXVsdDEzLnBuZyIsInBhcnRuZXJfc3RhdHVzX3N0cmluZyI6Ik5PTkUiLCJpZCI6IiIsImxpZCI6MCwidHlwZSI6IiIsInJvbGUiOiJOb25lIiwib2F1dGhfYXBwaWQiOiIiLCJleHAiOjE1NjQwOTA5OTgsImlhdCI6MTU2MTQ5ODk5OCwiaXNzIjoiTGlub0FwcCJ9.cgMveRgjYIlxPQGrs4rR5gr8CINt-wXH63VcbZCpmFc',
+                    'authorization': self.settings['auth_key'],
                     'content-type': 'application/json', 'Origin': 'https://dlive.tv', 'Referer': 'https://dlive.tv/'}
+                # todo set the correct streamer room/username.
                 data = {"operationName": "SendStreamChatMessage", "variables": {
-                    "input": {"streamer": "dlive-25848178", "message": self.message_queue.pop(0), "roomRole": "Owner",
+                    "input": {"streamer": self.settings['room'], "message": self.message_queue.pop(0), "roomRole": "Owner",
                               "subscribing": True}},
                         "extensions": {"persistedQuery": {"version": 1,
                                                           "sha256Hash": "e755f412252005c7d7865084170b9ec13547e9951a1296f7dfe92d377e760b30"}}}
                 r = requests.post(url='https://graphigo.prd.dlive.tv/',
                                   headers=headers,
                                   data=json.dumps(data))
-                print(r.content)
+                self.logger.info(r.text)
                 time.sleep(self.rate_limit_seconds)
 
 def process_arg(arg, b: Bot):
@@ -141,15 +147,14 @@ def process_arg(arg, b: Bot):
 
 async def start(executor, b: Bot):
     asyncio.get_event_loop().run_in_executor(executor, bot.process_message_queue),
-
     await b.connect()
 
 
 if __name__ == "__main__":
     bot = Bot()
     try:
-        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, )
         process_arg(sys.argv[1:], bot)
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, )
         asyncio.get_event_loop().run_until_complete(start(executor, bot))
     except Exception as e:
         print(e.__str__())

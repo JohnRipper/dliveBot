@@ -1,7 +1,14 @@
 
-STREAMMESSAGERECEIVED = 'streamMessageReceived'
-
+STREAMMESSAGERECEIVED = "streamMessageReceived"
 T_OBJECTS = [STREAMMESSAGERECEIVED]
+
+CHATDELETE = "ChatDelete"
+MESSAGE = "Message"
+CHATMODERATOR = "ChatModerator"
+TIMEOUT = "ChatTimeout" # MUTE
+STREAM_T_OBJECTS = [MESSAGE, CHATDELETE, CHATMODERATOR, TIMEOUT]
+
+
 
 def get_headers(auth_key:str):
     return {"authorization": auth_key,
