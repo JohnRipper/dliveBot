@@ -13,10 +13,15 @@ Copy the config and name it something else. then run with python bot.py -c <conf
  
  #ModuleSupport 
  #AdminModule
+ 
  reload <module_name>
+ 
  unload <module_name>
+ 
  load <module_name>
+ 
  kys  - quit
+ 
  
 # Making your own modules by overriding on_command or any of the socket events. 
 
