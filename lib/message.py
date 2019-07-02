@@ -36,5 +36,4 @@ class Message:
         # self.badges  its a list but ill do it later
 
     def reply(self, message: str):
-        # todo review send statement. create a sendfunction in bot.py
         self.bot.send(message)

@@ -4,7 +4,7 @@ import time
 
 
 class Echo(Cog):
-    async def message(self, data: dict):
+    async def chattext(self, data: dict):
         message = Message(self.bot,data)
         for p in self.bot.settings['global_prefixes']:
             if message.content.startswith(p):

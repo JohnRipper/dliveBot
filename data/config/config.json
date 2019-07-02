@@ -1,6 +1,6 @@
 {
   "auth_key": "",
-  "room": "dlive-25848178",
+  "room": "TastySodium",
   "global_prefixes": [".", ","],
   "modules": ["Echo", "Admin"]
 }

@@ -88,7 +88,7 @@ class Bot:
                     if data_type is constants.STREAMMESSAGERECEIVED:
                         # why is this even a list? ehh figure it out later
                         for object in d_crap['payload']['data']['streamMessageReceived']:
-                            for type in constants.STREAM_T_OBJECTS:
+                            for type in constants.STREAM_TN_OBJECTS:
                                 # this cog code only runs hen a stream message type is detected. wonder wht other types do.
                                 for cog in self.cogs:
                                     await getattr(cog, type.lower())(object)
