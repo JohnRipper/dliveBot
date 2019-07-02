@@ -21,10 +21,10 @@ Copy the config and name it something else. then run with python bot.py -c <conf
 # Making your own modules by overriding on_command or any of the socket events. 
 
 
-/from lib.cog import Cog
+from lib.cog import Cog
 
 
-/class Admin(Cog):
+class Admin(Cog):
     
     
     async def on_command(command:str, message: str):
