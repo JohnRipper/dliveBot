@@ -23,9 +23,9 @@ Copy the config and name it something else. then run with python bot.py -c <conf
 
 from lib.cog import Cog
 class ModuleName(Cog):
-async def on_command(command:str, message: str):
-    if command == "echo":
-        self.bot.send(message)
+    async def on_command(command:str, message: str):
+        if command == "echo":
+            self.bot.send(message)
   
     async def chattext(self, data):
         message = Message(self.bot, data)
