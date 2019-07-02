@@ -18,16 +18,15 @@ Copy the config and name it something else. then run with python bot.py -c <conf
  load <module_name>
  kys  - quit
  
-# Making your own modules. 
- 
+# Making your own modules by overriding on_command or any of the socket events. 
+# You may also work the raw data or convert it into a Message object
+
 from lib.cog import Cog
 class ModuleName(Cog):
-  # override any socket event or override on_command helper
 async def on_command(command:str, message: str):
     if command == "echo":
         self.bot.send(message)
   
-# You may also work the raw data or convert it into a Message object
     async def chattext(self, data):
         message = Message(self.bot, data)
         print(message.content)
